@@ -1,0 +1,129 @@
+proc get_signals {} {
+  set nfacs [gtkwave::getNumFacs]
+  set all_facs [list]
+
+  for {set i 0} {$i < $nfacs} {incr i} {
+    set facname [gtkwave::getFacName $i]
+    lappend all_facs "$facname"
+  }
+
+  return $all_facs
+}
+
+proc get_path {name} {
+  return [split $name .]
+}
+
+proc get_base {name} {
+  return [lindex [get_path $name] end]
+}
+
+proc get_level {name} {
+  return [expr {[llength [get_path $name]] - 1}]
+}
+
+proc is_param {name} {
+  return [string is upper [string index [get_base $name] 0]]
+}
+
+proc is_input {name} {
+  return [string equal -length 2 i_ [get_base $name]]
+}
+
+proc is_output {name} {
+  return [string equal -length 2 o_ [get_base $name]]
+}
+
+proc is_clock {name} {
+  set clock_str [list clock clk]
+  foreach s $clock_str {
+    if {[string first $s [get_base $name]] >= 0} {
+      return 1
+    }
+  }
+  return 0
+}
+
+proc is_reset {name} {
+  set reset_str [list reset rst]
+  foreach s $reset_str {
+    if {[string first $s [get_base $name]] >= 0} {
+      return 1
+    }
+  }
+  return 0
+}
+
+proc filter_level {signals level} {
+  set output [list]
+  foreach sig $signals {
+    if {[get_level $sig] == $level} {
+      lappend output $sig
+    }
+  }
+  return $output
+}
+
+proc filter_param {signals} {
+  set output [list]
+  foreach sig $signals {
+    if {![is_param $sig]} {
+      lappend output $sig
+    }
+  }
+  return $output
+}
+
+proc add_signals {level} {
+  set inputs {{} {} {}}
+  set outputs {{} {} {}}
+  set params {}
+  set remainder {}
+
+  foreach sig [get_signals] {
+    if {[get_level $sig] != $level} {
+      continue
+    }
+
+    set clock [is_clock $sig]
+    set reset [is_reset $sig]
+
+    if {[is_input $sig]} {
+      if {$clock} {
+        lset inputs 0 end+1 $sig
+      } elseif {$reset} {
+        lset inputs 1 end+1 $sig
+      } else {
+        lset inputs 2 end+1 $sig
+      }
+    } elseif {[is_output $sig]} {
+      if {$clock} {
+        lset outputs 0 end+1 $sig
+      } elseif {$reset} {
+        lset outputs 1 end+1 $sig
+      } else {
+        lset outputs 2 end+1 $sig
+      }
+    } elseif {[is_param $sig]} {
+      lappend params $sig
+    } else {
+      lappend remainder $sig
+    }
+  }
+
+  set inputs [join $inputs]
+  set outputs [join $outputs]
+
+  gtkwave::addSignalsFromList $inputs
+  gtkwave::addSignalsFromList $outputs
+  gtkwave::addSignalsFromList $remainder
+}
+
+@LOAD_FILES@
+
+for {set i 0} {$i < [gtkwave::getNumTabs]} {incr i} {
+  gtkwave::setTabActive $i
+  add_signals @OPEN_LEVEL@
+  gtkwave::/Edit/UnHighlight_All
+  gtkwave::/Time/Zoom/Zoom_Full
+}
