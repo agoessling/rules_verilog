@@ -1,2 +1,2 @@
-# bazel_os.path.dirname(__file__)hdl
+# bazel_hdl
 Utilities for working with HDL within Bazel.
