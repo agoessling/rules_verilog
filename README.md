@@ -1,2 +1,2 @@
-# bazel_hdl
-Utilities for working with HDL within Bazel.
+# rules_verilog
+Utilities for working with Verilog within Bazel.
