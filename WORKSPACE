@@ -1,1 +1,1 @@
-workspace(name = "bazel_hdl")
+workspace(name = "rules_verilog")
